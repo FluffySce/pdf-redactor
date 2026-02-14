@@ -1,0 +1,5 @@
+venv/
+.env
+output/
+protected_pdfs/
+__pycache__/
