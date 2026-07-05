@@ -1,4 +1,3 @@
-john@example.com
-1234
-mail@test.com
-
+john.doe@example.com
+secret123
+EMP-001

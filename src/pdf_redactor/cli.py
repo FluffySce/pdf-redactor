@@ -2,10 +2,12 @@ from pathlib import Path
 
 import typer
 
+from pdf_redactor.protect import protect_pdf
+from pdf_redactor.unlock import unlock_pdf
 from pdf_redactor.redactor import run
 
 app = typer.Typer(
-    help="Batch unlock password-protected PDFs and permanently redact sensitive text."
+    help="Protect, unlock and permanently redact PDF documents."
 )
 
 
@@ -13,6 +15,79 @@ app = typer.Typer(
 def callback():
     """pdf-redactor CLI."""
     pass
+
+
+@app.command()
+def protect(
+    input_pdf: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Input PDF to protect.",
+    ),
+    output_pdf: Path = typer.Argument(
+        ...,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        help="Output protected PDF.",
+    ),
+    password: str = typer.Option(
+        ...,
+        "--password",
+        "-p",
+        prompt=True,
+        hide_input=True,
+        confirmation_prompt=True,
+        help="Password to protect the PDF with.",
+    ),
+):
+    """Password-protect a PDF."""
+
+    protect_pdf(
+        input_pdf=input_pdf,
+        output_pdf=output_pdf,
+        password=password,
+    )
+
+
+@app.command()
+def unlock(
+    input_pdf: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Protected PDF to unlock.",
+    ),
+    output_pdf: Path = typer.Argument(
+        ...,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        help="Unlocked output PDF.",
+    ),
+    password: str = typer.Option(
+        ...,
+        "--password",
+        "-p",
+        prompt=True,
+        hide_input=True,
+        help="Password used to unlock the PDF.",
+    ),
+):
+    """Remove password protection from a PDF."""
+
+    unlock_pdf(
+        input_pdf=input_pdf,
+        output_pdf=output_pdf,
+        password=password,
+    )
 
 
 @app.command()
@@ -45,7 +120,13 @@ def redact(
         [],
         "--match",
         "-m",
-        help="Literal text to redact. Can be provided multiple times.",
+        help="Literal text to redact. Can be specified multiple times.",
+    ),
+    regexes: list[str] = typer.Option(
+        [],
+        "--regex",
+        "-r",
+        help="Regex pattern to redact. Can be specified multiple times.",
     ),
     match_file: Path | None = typer.Option(
         None,
@@ -56,23 +137,24 @@ def redact(
         dir_okay=False,
         readable=True,
         resolve_path=True,
-        help="Text file containing one match pattern per line.",
-
-    )
+        help="Text file containing one literal match per line.",
+    ),
 ):
-    """Unlock PDFs and redact sensitive text."""
+    """Unlock and redact PDFs."""
 
     all_matches = list(matches)
+
     if match_file:
         all_matches.extend(
             line.strip()
             for line in match_file.read_text(encoding="utf-8").splitlines()
             if line.strip()
         )
-    if not all_matches:
+
+    if not all_matches and not regexes:
         typer.echo(
-            "Error: Provide atleast one --match/-m or --match-file/-f .",
-            err=True
+            "Error: provide at least one --match, --match-file or --regex.",
+            err=True,
         )
         raise typer.Exit(code=1)
 
@@ -81,6 +163,7 @@ def redact(
         output_folder=output_folder,
         pdf_password=password,
         matches=all_matches,
+        regexes=regexes,
     )
 
 
