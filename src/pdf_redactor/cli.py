@@ -280,11 +280,11 @@ def redact(
 
     if report_file:
         report_file.write_text(
-            json.dumps(report,indent=2),
+            json.dumps(report, indent=2),
             encoding="utf-8",
         )
-    typer.echo()
-    typer.echo(f"Report written to '{report_file}'.")
+        typer.echo()
+        typer.echo(f"Report written to '{report_file}'.")
 
 
 if __name__ == "__main__":
