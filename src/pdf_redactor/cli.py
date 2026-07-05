@@ -4,7 +4,7 @@ import typer
 
 from pdf_redactor.protect import protect_pdf
 from pdf_redactor.unlock import unlock_pdf
-from pdf_redactor.redactor import run
+from pdf_redactor.redactor import redact_pdfs
 
 app = typer.Typer(
     help="Protect, unlock and permanently redact PDF documents."
@@ -53,6 +53,8 @@ def protect(
         password=password,
     )
 
+    typer.echo(f"Protected PDF written to '{output_pdf}'.")
+
 
 @app.command()
 def unlock(
@@ -88,6 +90,8 @@ def unlock(
         output_pdf=output_pdf,
         password=password,
     )
+
+    typer.echo(f"Unlocked PDF written to '{output_pdf}'.")
 
 
 @app.command()
@@ -158,7 +162,7 @@ def redact(
         )
         raise typer.Exit(code=1)
 
-    run(
+    redact_pdfs(
         input_folder=input_folder,
         output_folder=output_folder,
         pdf_password=password,

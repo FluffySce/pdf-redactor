@@ -2,11 +2,12 @@ from pathlib import Path
 import re
 
 import fitz
-import pikepdf
 import typer
 
+from pdf_redactor.unlock import unlock_pdf
 
-def run(
+
+def redact_pdfs(
     input_folder: Path,
     output_folder: Path,
     pdf_password: str,
@@ -33,11 +34,14 @@ def run(
 
             output_path = output_folder / pdf.name
 
-            # Step 1: Unlock PDF
-            with pikepdf.open(pdf, password=pdf_password) as unlocked_pdf:
-                unlocked_pdf.save(temp_path)
+            # Unlock the PDF using the shared helper
+            unlock_pdf(
+                input_pdf=pdf,
+                output_pdf=temp_path,
+                password=pdf_password,
+            )
 
-            # Step 2: Open unlocked PDF
+            # Open the unlocked PDF
             doc = fitz.open(temp_path)
 
             for page in doc:
@@ -54,11 +58,11 @@ def run(
                     for regex_match in compiled.finditer(page_text):
                         matched_text = regex_match.group(0)
 
-                        # Locate the matched text on the page
+                        # Locate matched text on the page
                         for area in page.search_for(matched_text):
                             page.add_redact_annot(area, fill=(0, 0, 0))
 
-                # Apply all redactions once per page
+                # Apply all queued redactions
                 page.apply_redactions()
 
             doc.save(output_path)
