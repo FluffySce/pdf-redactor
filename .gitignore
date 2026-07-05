@@ -2,4 +2,5 @@ venv/
 .env
 output/
 input/
+tests/
 __pycache__/

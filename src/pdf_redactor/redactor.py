@@ -1,58 +1,49 @@
-import os
+from pathlib import Path
 
 import fitz
 import pikepdf
 import typer
-from dotenv import load_dotenv
+
 
 def run(
-    input_folder: str,
-    output_folder: str,
-):
-    load_dotenv(".env")
+    input_folder: Path,
+    output_folder: Path,
+    pdf_password: str,
+    text_to_redact: str,
+) -> None:
+    output_folder.mkdir(parents=True, exist_ok=True)
 
-    pdf_password = os.getenv("PDF_PASSWORD")
-    text_to_redact = os.getenv("TEXT_TO_REDACT")
+    temp_path = output_folder / "temp_unlocked.pdf"
 
-    os.makedirs(output_folder, exist_ok=True)
+    try:
+        for pdf in input_folder.iterdir():
+            if pdf.suffix.lower() != ".pdf":
+                continue
 
-    if not os.path.isdir(input_folder):
-        typer.echo(
-            f"Error: '{input_folder}' directory not found.",
-            err=True,
-        )
-        raise typer.Exit(code=1)
+            typer.echo(f"Processing: {pdf.name}")
 
-    temp_path = os.path.join(output_folder, "temp_unlocked.pdf")
+            output_path = output_folder / pdf.name
 
-    for filename in os.listdir(input_folder):
-        if not filename.lower().endswith(".pdf"):
-            continue
+            # Step 1: Unlock PDF
+            with pikepdf.open(pdf, password=pdf_password) as unlocked_pdf:
+                unlocked_pdf.save(temp_path)
 
-        input_path = os.path.join(input_folder, filename)
-        output_path = os.path.join(output_folder, filename)
+            # Step 2: Redact text
+            doc = fitz.open(temp_path)
 
-        typer.echo(f"Processing: {filename}")
+            for page in doc:
+                areas = page.search_for(text_to_redact)
 
-        # Step 1: Unlock PDF
-        with pikepdf.open(input_path, password=pdf_password) as pdf:
-            pdf.save(temp_path)
+                for area in areas:
+                    page.add_redact_annot(area, fill=(0, 0, 0))
 
-        # Step 2: Redact text
-        doc = fitz.open(temp_path)
+                page.apply_redactions()
 
-        for page in doc:
-            areas = page.search_for(text_to_redact)
+            doc.save(output_path)
+            doc.close()
 
-            for area in areas:
-                page.add_redact_annot(area, fill=(0, 0, 0))
-
-            page.apply_redactions()
-
-        doc.save(output_path)
-        doc.close()
-
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
     typer.echo("Done. All PDFs unlocked and redacted.")
