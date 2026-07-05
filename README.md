@@ -1,54 +1,32 @@
 # pdf-redactor
 
-> Batch unlock password-protected PDFs and permanently redact sensitive text.
+Batch protect, unlock, and permanently redact sensitive information from PDF documents.
 
-`pdf-redactor` is a simple Python CLI built to automate a repetitive task: removing passwords from multiple PDFs and redacting the same sensitive information across all of them.
+`pdf-redactor` is a command-line tool for processing multiple PDF files at once. It can password-protect PDFs, remove password protection, redact literal text or regular expression matches, and generate an audit report of everything it processed.
 
-Instead of opening every document manually, drop your PDFs into a folder, run the script once, and receive clean copies in the output directory.
+It was built for repetitive workflows where many documents contain the same confidential information and need to be sanitized quickly.
 
 > **Note**
-> This tool only works with **text-based PDFs**. Scanned documents (images) require OCR before text can be redacted.
+>
+> This tool works with **text-based PDFs**. Scanned PDFs are images and require OCR before they can be searched or redacted.
 
 ---
 
 ## Features
 
-- Remove passwords from multiple PDFs
-- Permanently redact sensitive text
+- Password-protect PDF documents
+- Remove password protection
 - Batch process entire folders
-- Keep passwords out of source code using `.env`
+- Redact literal text
+- Redact using regular expressions
+- Built-in presets (email, PAN, phone numbers, URLs, Aadhaar, IPv4)
+- Custom pattern files
+- TOML configuration support
+- Dry-run mode
+- JSON audit reports
+- Rich CLI progress bar
+- Continue processing even if one file fails
 - Preserve original files
-- Lightweight with minimal dependencies
-
----
-
-## Example
-
-Input:
-
-```
-protected_pdfs/
-
-├── invoice-1.pdf
-├── invoice-2.pdf
-├── invoice-3.pdf
-```
-
-Run:
-
-```bash
-python main.py
-```
-
-Output:
-
-```
-output/
-
-├── invoice-1.pdf
-├── invoice-2.pdf
-└── invoice-3.pdf
-```
 
 ---
 
@@ -66,79 +44,242 @@ Create a virtual environment:
 ### Windows
 
 ```bash
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
-### macOS / Linux
+### Linux / macOS
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-Install dependencies:
+Install the package:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ---
 
-## Configuration
+## Quick Start
 
-Create a `.env` file in the project root.
+Protect a PDF:
 
-```env
-PDF_PASSWORD=your_password
-TEXT_TO_REDACT=PAN: ABCDE1234F
+```bash
+pdf-redactor protect document.pdf protected.pdf
 ```
 
-Example:
+Unlock a PDF:
 
-```env
-PDF_PASSWORD=abc123
-TEXT_TO_REDACT=john.doe@example.com
+```bash
+pdf-redactor unlock protected.pdf unlocked.pdf
+```
+
+Redact every PDF inside a folder:
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --preset email \
+    --preset pan
 ```
 
 ---
 
 ## Usage
 
-Place all password-protected PDFs inside:
+### Protect a PDF
 
+```bash
+pdf-redactor protect input.pdf protected.pdf
 ```
-protected_pdfs/
+
+---
+
+### Unlock a PDF
+
+```bash
+pdf-redactor unlock protected.pdf unlocked.pdf
+```
+
+---
+
+### Redact literal text
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --match "John Doe"
+```
+
+Multiple matches:
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --match "John Doe" \
+    --match "Confidential"
+```
+
+---
+
+### Redact using regex
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --regex "[A-Z]{5}[0-9]{4}[A-Z]"
+```
+
+Multiple regex patterns are supported.
+
+---
+
+### Use built-in presets
+
+Instead of writing regex manually:
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --preset email \
+    --preset phone \
+    --preset pan
+```
+
+Available presets include:
+
+- email
+- phone
+- pan
+- aadhaar
+- ipv4
+- url
+
+---
+
+### Load matches from a file
+
+`patterns.txt`
+
+```text
+John Doe
+Confidential
+Internal Use Only
 ```
 
 Run:
 
 ```bash
-python main.py
+pdf-redactor redact input output \
+    --password 1234 \
+    --match-file patterns.txt
 ```
 
-Processed files will be written to:
+---
 
-```
-output/
+### Configuration file
+
+`company.toml`
+
+```toml
+presets = [
+    "email",
+    "pan",
+]
+
+matches = [
+    "Confidential",
+]
+
+regexes = [
+    "\\b\\d{10}\\b",
+]
 ```
 
-The original PDFs are never modified.
+Run:
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --config company.toml
+```
+
+Command-line arguments and configuration can be combined.
+
+---
+
+### Dry run
+
+Preview what would be redacted without modifying any files.
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --preset email \
+    --dry-run
+```
+
+---
+
+### JSON report
+
+Generate a machine-readable report.
+
+```bash
+pdf-redactor redact input output \
+    --password 1234 \
+    --preset email \
+    --report report.json
+```
+
+Example:
+
+```json
+{
+  "summary": {
+    "tool_version": "1.0.0",
+    "generated_at": "2026-07-05T12:34:56+00:00",
+    "pdfs_scanned": 5,
+    "literal_hits": 8,
+    "regex_hits": 21,
+    "total_hits": 29,
+    "dry_run": false
+  },
+  "files": [
+    {
+      "name": "invoice.pdf",
+      "status": "success",
+      "literal_hits": 2,
+      "regex_hits": 5,
+      "total_hits": 7
+    }
+  ]
+}
+```
 
 ---
 
 ## Project Structure
 
-```
+```text
 pdf-redactor/
+
+├── src/
+│   └── pdf_redactor/
+│       ├── cli.py
+│       ├── config.py
+│       ├── console.py
+│       ├── presets.py
+│       ├── protect.py
+│       ├── redactor.py
+│       └── unlock.py
 │
-├── protected_pdfs/
-├── output/
-│
-├── main.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
+├── tests/
+├── examples/
+├── pyproject.toml
 └── README.md
 ```
 
@@ -146,53 +287,47 @@ pdf-redactor/
 
 ## How It Works
 
-1. Unlocks each PDF using **pikepdf**
-2. Searches for the specified text
-3. Permanently applies redactions
-4. Saves the cleaned document to the output folder
-
----
-
-## Tech Stack
-
-- Python
-- pikepdf
-- PyMuPDF (fitz)
-- python-dotenv
+1. Unlock the input PDF (if required).
+2. Search every page for literal and/or regex matches.
+3. Apply permanent PDF redactions.
+4. Save the processed document.
+5. Generate an optional JSON report.
 
 ---
 
 ## Limitations
 
-- Works only with **selectable text PDFs**
-- Redacts exact text matches
-- Password must be the same for every input PDF
+- Works only with text-based PDFs.
+- Does not perform OCR.
+- Password-protected batch redaction assumes the input PDFs share the same password.
+- Regex matches depend on the extracted text from the PDF.
 
 ---
 
-## Security
+## Testing
 
-The repository ignores:
+Run the test suite:
 
-```
-.env
-protected_pdfs/
-output/
-venv/
+```bash
+pytest
 ```
 
-Passwords are read from environment variables and are never stored in source code.
+Run with coverage:
+
+```bash
+pytest --cov=pdf_redactor
+```
 
 ---
 
 ## Why I Built This
 
-I had dozens of password-protected PDFs containing the same sensitive information. Unlocking each file and manually redacting the text was repetitive, so I wrote a small utility to automate the entire workflow.
+I had a folder full of password-protected PDFs that all contained the same sensitive information. Unlocking and redacting them one by one was repetitive, so I wrote a small tool to automate the process.
 
-If it saves someone else from doing the same tedious work, even better.
+It grew from a simple script into a reusable command-line utility that others might find useful too.
 
 ---
 
 ## License
 
-MIT License
+MIT
