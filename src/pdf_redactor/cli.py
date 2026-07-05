@@ -41,11 +41,11 @@ def redact(
         hide_input=True,
         help="Password used to unlock all PDFs.",
     ),
-    text: str = typer.Option(
-        ...,
-        "--text",
-        "-t",
-        help="Exact text to permanently redact.",
+    matches: list[str] | None = typer.Option(
+        [],
+        "--match",
+        "-m",
+        help="Literal text to redact. Can be provided multiple times.",
     ),
 ):
     """Unlock PDFs and redact sensitive text."""
@@ -54,7 +54,7 @@ def redact(
         input_folder=input_folder,
         output_folder=output_folder,
         pdf_password=password,
-        text_to_redact=text,
+        matches=matches,
     )
 
 

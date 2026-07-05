@@ -9,7 +9,7 @@ def run(
     input_folder: Path,
     output_folder: Path,
     pdf_password: str,
-    text_to_redact: str,
+    matches: list[str],
 ) -> None:
     output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -32,10 +32,11 @@ def run(
             doc = fitz.open(temp_path)
 
             for page in doc:
-                areas = page.search_for(text_to_redact)
+                for match in matches:
+                    areas = page.search_for(match)
 
-                for area in areas:
-                    page.add_redact_annot(area, fill=(0, 0, 0))
+                    for area in areas:
+                        page.add_redact_annot(area, fill=(0, 0, 0))
 
                 page.apply_redactions()
 
