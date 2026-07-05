@@ -1,9 +1,18 @@
+from datetime import UTC, datetime
 from pathlib import Path
 import re
 
 import fitz
 import typer
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
+from pdf_redactor.console import console
 from pdf_redactor.unlock import unlock_pdf
 
 
@@ -31,88 +40,138 @@ def redact_pdfs(
             for pattern in regexes
         ]
     except re.error as e:
-        typer.echo(f"Invalid regex: {e}", err=True)
+        console.print(f"[red]Invalid regex:[/red] {e}")
         raise typer.Exit(code=1)
 
+    pdfs = [
+        pdf
+        for pdf in input_folder.iterdir()
+        if pdf.suffix.lower() == ".pdf"
+    ]
+
     try:
-        for pdf in input_folder.iterdir():
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
 
-            if pdf.suffix.lower() != ".pdf":
-                continue
-
-            total_files += 1
-
-            typer.echo(f"Processing: {pdf.name}")
-
-            output_path = output_folder / pdf.name
-
-            unlock_pdf(
-                input_pdf=pdf,
-                output_pdf=temp_path,
-                password=pdf_password,
+            task = progress.add_task(
+                "Redacting PDFs",
+                total=len(pdfs),
             )
 
-            doc = fitz.open(temp_path)
+            for pdf in pdfs:
 
-            file_literal_hits = 0
-            file_regex_hits = 0
+                progress.update(
+                    task,
+                    description=f"[cyan]Processing[/cyan] {pdf.name}",
+                )
 
-            for page in doc:
+                total_files += 1
 
-                # Literal matches
-                for match in matches:
+                output_path = output_folder / pdf.name
 
-                    for area in page.search_for(match):
+                file_literal_hits = 0
+                file_regex_hits = 0
 
-                        file_literal_hits += 1
+                try:
+                    unlock_pdf(
+                        input_pdf=pdf,
+                        output_pdf=temp_path,
+                        password=pdf_password,
+                    )
+
+                    doc = fitz.open(temp_path)
+
+                    for page in doc:
+
+                        # Literal matches
+                        for match in matches:
+                            for area in page.search_for(match):
+
+                                file_literal_hits += 1
+
+                                if not dry_run:
+                                    page.add_redact_annot(
+                                        area,
+                                        fill=(0, 0, 0),
+                                    )
+
+                        # Regex matches
+                        page_text = page.get_text()
+
+                        for compiled in compiled_regexes:
+                            for regex_match in compiled.finditer(page_text):
+
+                                matched_text = regex_match.group(0)
+
+                                for area in page.search_for(matched_text):
+
+                                    file_regex_hits += 1
+
+                                    if not dry_run:
+                                        page.add_redact_annot(
+                                            area,
+                                            fill=(0, 0, 0),
+                                        )
 
                         if not dry_run:
-                            page.add_redact_annot(
-                                area,
-                                fill=(0, 0, 0),
-                            )
+                            page.apply_redactions()
 
-                # Regex matches
-                page_text = page.get_text()
+                    if not dry_run:
+                        doc.save(output_path)
 
-                for compiled in compiled_regexes:
+                    doc.close()
 
-                    for regex_match in compiled.finditer(page_text):
+                    total_literal_hits += file_literal_hits
+                    total_regex_hits += file_regex_hits
 
-                        matched_text = regex_match.group(0)
+                    files.append(
+                        {
+                            "name": pdf.name,
+                            "status": "success",
+                            "literal_hits": file_literal_hits,
+                            "regex_hits": file_regex_hits,
+                            "total_hits": (
+                                file_literal_hits
+                                + file_regex_hits
+                            ),
+                        }
+                    )
 
-                        for area in page.search_for(matched_text):
+                    progress.update(
+                        task,
+                        description=f"[green]✓[/green] {pdf.name}",
+                    )
 
-                            file_regex_hits += 1
+                except Exception as e:
 
-                            if not dry_run:
-                                page.add_redact_annot(
-                                    area,
-                                    fill=(0, 0, 0),
-                                )
+                    files.append(
+                        {
+                            "name": pdf.name,
+                            "status": "failed",
+                            "error": str(e),
+                            "literal_hits": file_literal_hits,
+                            "regex_hits": file_regex_hits,
+                            "total_hits": (
+                                file_literal_hits
+                                + file_regex_hits
+                            ),
+                        }
+                    )
 
-                if not dry_run:
-                    page.apply_redactions()
+                    progress.update(
+                        task,
+                        description=f"[red]✗[/red] {pdf.name}",
+                    )
 
-            if not dry_run:
-                doc.save(output_path)
-
-            doc.close()
-
-            total_literal_hits += file_literal_hits
-            total_regex_hits += file_regex_hits
-
-            files.append(
-                {
-                    "name": pdf.name,
-                    "literal_hits": file_literal_hits,
-                    "regex_hits": file_regex_hits,
-                    "total_hits": (
-                        file_literal_hits
-                        + file_regex_hits
-                    ),
-                }
-            )
+                finally:
+                    progress.advance(task)
 
     finally:
         if temp_path.exists():
@@ -120,6 +179,12 @@ def redact_pdfs(
 
     return {
         "summary": {
+            "tool_version": "1.0.0",
+            "generated_at": (
+                datetime.now(UTC)
+                .replace(microsecond=0)
+                .isoformat()
+            ),
             "pdfs_scanned": total_files,
             "literal_hits": total_literal_hits,
             "regex_hits": total_regex_hits,
