@@ -1,14 +1,29 @@
 from pathlib import Path
 
 import typer
+import click
 
+from pdf_redactor.presets import PRESETS
 from pdf_redactor.protect import protect_pdf
-from pdf_redactor.unlock import unlock_pdf
 from pdf_redactor.redactor import redact_pdfs
+from pdf_redactor.unlock import unlock_pdf
+from click.shell_completion import CompletionItem
+
 
 app = typer.Typer(
     help="Protect, unlock and permanently redact PDF documents."
 )
+
+def complete_presets(
+    ctx: click.Context,
+    param: click.Parameter,
+    incomplete: str,
+):
+    return [
+        CompletionItem(preset)
+        for preset in PRESETS
+        if preset.startswith(incomplete.lower())
+    ]
 
 
 @app.callback()
@@ -130,7 +145,13 @@ def redact(
         [],
         "--regex",
         "-r",
-        help="Regex pattern to redact. Can be specified multiple times.",
+        help="Regular expression to redact. Can be specified multiple times.",
+    ),
+    presets: list[str] = typer.Option(
+        [],
+        "--preset",
+        help="Built-in preset(s). Can be specified multiple times.",
+        shell_complete=complete_presets,
     ),
     match_file: Path | None = typer.Option(
         None,
@@ -147,7 +168,9 @@ def redact(
     """Unlock and redact PDFs."""
 
     all_matches = list(matches)
+    all_regexes = list(regexes)
 
+    # Load literal matches from file
     if match_file:
         all_matches.extend(
             line.strip()
@@ -155,9 +178,26 @@ def redact(
             if line.strip()
         )
 
-    if not all_matches and not regexes:
+    # Resolve presets
+    for preset in presets:
+        key = preset.lower()
+
+        if key not in PRESETS:
+            typer.echo(
+                f"Unknown preset '{preset}'.",
+                err=True,
+            )
+            typer.echo(
+                f"Available presets: {', '.join(sorted(PRESETS))}",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        all_regexes.append(PRESETS[key])
+
+    if not all_matches and not all_regexes:
         typer.echo(
-            "Error: provide at least one --match, --match-file or --regex.",
+            "Error: provide at least one --match, --match-file, --regex or --preset.",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -167,7 +207,7 @@ def redact(
         output_folder=output_folder,
         pdf_password=password,
         matches=all_matches,
-        regexes=regexes,
+        regexes=all_regexes,
     )
 
 
