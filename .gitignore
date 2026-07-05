@@ -18,6 +18,7 @@ __pycache__/
 build/
 dist/
 pip-wheel-metadata/
+pdf_redactor.egg-info/
 
 # Test & coverage
 .pytest_cache/
