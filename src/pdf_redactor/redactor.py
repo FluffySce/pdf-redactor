@@ -5,15 +5,14 @@ import pikepdf
 import typer
 from dotenv import load_dotenv
 
-
-def run():
+def run(
+    input_folder: str,
+    output_folder: str,
+):
     load_dotenv(".env")
 
     pdf_password = os.getenv("PDF_PASSWORD")
     text_to_redact = os.getenv("TEXT_TO_REDACT")
-
-    input_folder = "input"
-    output_folder = "output"
 
     os.makedirs(output_folder, exist_ok=True)
 
