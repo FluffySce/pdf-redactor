@@ -1,0 +1,13 @@
+presets = [
+    "email",
+    "pan",
+]
+
+matches = [
+    "CEO",
+    "Confidential",
+]
+
+regexes = [
+    "\\b\\d{12}\\b",
+]

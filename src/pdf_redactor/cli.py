@@ -8,6 +8,7 @@ from pdf_redactor.protect import protect_pdf
 from pdf_redactor.redactor import redact_pdfs
 from pdf_redactor.unlock import unlock_pdf
 from click.shell_completion import CompletionItem
+from pdf_redactor.config import load_config
 
 
 app = typer.Typer(
@@ -164,11 +165,40 @@ def redact(
         resolve_path=True,
         help="Text file containing one literal match per line.",
     ),
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        "-c",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="TOML configuration file.",
+    ),
 ):
     """Unlock and redact PDFs."""
 
     all_matches = list(matches)
     all_regexes = list(regexes)
+    
+    if config:
+        cfg = load_config(config)
+
+        all_matches.extend(cfg.get("matches", []))
+        all_regexes.extend(cfg.get("regexes", []))
+
+        for preset in cfg.get("presets", []):
+            key = preset.lower()
+
+            if key not in PRESETS:
+                typer.echo(
+                    f"Unknown preset '{preset}' in config.",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+            all_regexes.append(PRESETS[key])
 
     # Load literal matches from file
     if match_file:
