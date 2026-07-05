@@ -2,6 +2,7 @@ from pathlib import Path
 
 import typer
 import click
+import json
 
 from pdf_redactor.presets import PRESETS
 from pdf_redactor.protect import protect_pdf
@@ -176,6 +177,16 @@ def redact(
         resolve_path=True,
         help="TOML configuration file.",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be redacted without modifying PDFs.",
+    ),
+    report_file: Path | None = typer.Option(
+        None,
+        "--report",
+        help="Write execution report to a JSON file."
+    ),
 ):
     """Unlock and redact PDFs."""
 
@@ -232,13 +243,48 @@ def redact(
         )
         raise typer.Exit(code=1)
 
-    redact_pdfs(
+    report = redact_pdfs(
         input_folder=input_folder,
         output_folder=output_folder,
         pdf_password=password,
         matches=all_matches,
         regexes=all_regexes,
+        dry_run=dry_run,
     )
+
+    summary = report["summary"]
+
+    typer.echo()
+
+    for file in report["files"]:
+        typer.echo(file["name"])
+        typer.echo("-" * len(file["name"]))
+        typer.echo(f"Literal hits : {file['literal_hits']}")
+        typer.echo(f"Regex hits   : {file['regex_hits']}")
+        typer.echo(f"Total hits   : {file['total_hits']}")
+        typer.echo()
+
+    if summary["dry_run"]:
+        typer.echo("Dry run complete.")
+        typer.echo("No PDFs were modified.")
+    else:
+        typer.echo("Done. All PDFs unlocked and redacted.")
+
+    typer.echo()
+    typer.echo("Overall Summary")
+    typer.echo("---------------")
+    typer.echo(f"PDFs scanned : {summary['pdfs_scanned']}")
+    typer.echo(f"Literal hits : {summary['literal_hits']}")
+    typer.echo(f"Regex hits   : {summary['regex_hits']}")
+    typer.echo(f"Total hits   : {summary['total_hits']}")
+
+    if report_file:
+        report_file.write_text(
+            json.dumps(report,indent=2),
+            encoding="utf-8",
+        )
+    typer.echo()
+    typer.echo(f"Report written to '{report_file}'.")
 
 
 if __name__ == "__main__":
