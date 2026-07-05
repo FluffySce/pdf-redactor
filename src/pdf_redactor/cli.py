@@ -41,20 +41,46 @@ def redact(
         hide_input=True,
         help="Password used to unlock all PDFs.",
     ),
-    matches: list[str] | None = typer.Option(
+    matches: list[str] = typer.Option(
         [],
         "--match",
         "-m",
         help="Literal text to redact. Can be provided multiple times.",
     ),
+    match_file: Path | None = typer.Option(
+        None,
+        "--match-file",
+        "-f",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Text file containing one match pattern per line.",
+
+    )
 ):
     """Unlock PDFs and redact sensitive text."""
+
+    all_matches = list(matches)
+    if match_file:
+        all_matches.extend(
+            line.strip()
+            for line in match_file.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
+    if not all_matches:
+        typer.echo(
+            "Error: Provide atleast one --match/-m or --match-file/-f .",
+            err=True
+        )
+        raise typer.Exit(code=1)
 
     run(
         input_folder=input_folder,
         output_folder=output_folder,
         pdf_password=password,
-        matches=matches,
+        matches=all_matches,
     )
 
 
