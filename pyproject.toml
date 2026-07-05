@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf-redactor"
+version = "0.1.0"
+description = "Batch unlock password-protected PDFs and permanently redact sensitive text."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Farhan Khan" }
+]
+keywords = [
+    "pdf",
+    "redaction",
+    "cli",
+    "security",
+    "batch",
+]
+
+dependencies = [
+    "pikepdf>=10.3",
+    "pymupdf>=1.28.0",
+    "python-dotenv>=1.2.1",
+]
+
+[project.urls]
+Repository = "https://github.com/FluffySce/pdf-redactor"
+Issues = "https://github.com/FluffySce/pdf-redactor/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

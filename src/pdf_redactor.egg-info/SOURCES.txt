@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+src/pdf_redactor/__init__.py
+src/pdf_redactor/main.py
+src/pdf_redactor.egg-info/PKG-INFO
+src/pdf_redactor.egg-info/SOURCES.txt
+src/pdf_redactor.egg-info/dependency_links.txt
+src/pdf_redactor.egg-info/requires.txt
+src/pdf_redactor.egg-info/top_level.txt

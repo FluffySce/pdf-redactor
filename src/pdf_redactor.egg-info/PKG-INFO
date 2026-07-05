@@ -1,0 +1,213 @@
+Metadata-Version: 2.4
+Name: pdf-redactor
+Version: 0.1.0
+Summary: Batch unlock password-protected PDFs and permanently redact sensitive text.
+Author: Farhan Khan
+License-Expression: MIT
+Project-URL: Repository, https://github.com/FluffySce/pdf-redactor
+Project-URL: Issues, https://github.com/FluffySce/pdf-redactor/issues
+Keywords: pdf,redaction,cli,security,batch
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pikepdf>=10.3
+Requires-Dist: pymupdf>=1.28.0
+Requires-Dist: python-dotenv>=1.2.1
+
+# pdf-redactor
+
+> Batch unlock password-protected PDFs and permanently redact sensitive text.
+
+`pdf-redactor` is a simple Python CLI built to automate a repetitive task: removing passwords from multiple PDFs and redacting the same sensitive information across all of them.
+
+Instead of opening every document manually, drop your PDFs into a folder, run the script once, and receive clean copies in the output directory.
+
+> **Note**
+> This tool only works with **text-based PDFs**. Scanned documents (images) require OCR before text can be redacted.
+
+---
+
+## Features
+
+- Remove passwords from multiple PDFs
+- Permanently redact sensitive text
+- Batch process entire folders
+- Keep passwords out of source code using `.env`
+- Preserve original files
+- Lightweight with minimal dependencies
+
+---
+
+## Example
+
+Input:
+
+```
+protected_pdfs/
+
+├── invoice-1.pdf
+├── invoice-2.pdf
+├── invoice-3.pdf
+```
+
+Run:
+
+```bash
+python main.py
+```
+
+Output:
+
+```
+output/
+
+├── invoice-1.pdf
+├── invoice-2.pdf
+└── invoice-3.pdf
+```
+
+---
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/<your-username>/pdf-redactor.git
+cd pdf-redactor
+```
+
+Create a virtual environment:
+
+### Windows
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+### macOS / Linux
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Configuration
+
+Create a `.env` file in the project root.
+
+```env
+PDF_PASSWORD=your_password
+TEXT_TO_REDACT=PAN: ABCDE1234F
+```
+
+Example:
+
+```env
+PDF_PASSWORD=abc123
+TEXT_TO_REDACT=john.doe@example.com
+```
+
+---
+
+## Usage
+
+Place all password-protected PDFs inside:
+
+```
+protected_pdfs/
+```
+
+Run:
+
+```bash
+python main.py
+```
+
+Processed files will be written to:
+
+```
+output/
+```
+
+The original PDFs are never modified.
+
+---
+
+## Project Structure
+
+```
+pdf-redactor/
+│
+├── protected_pdfs/
+├── output/
+│
+├── main.py
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
+```
+
+---
+
+## How It Works
+
+1. Unlocks each PDF using **pikepdf**
+2. Searches for the specified text
+3. Permanently applies redactions
+4. Saves the cleaned document to the output folder
+
+---
+
+## Tech Stack
+
+- Python
+- pikepdf
+- PyMuPDF (fitz)
+- python-dotenv
+
+---
+
+## Limitations
+
+- Works only with **selectable text PDFs**
+- Redacts exact text matches
+- Password must be the same for every input PDF
+
+---
+
+## Security
+
+The repository ignores:
+
+```
+.env
+protected_pdfs/
+output/
+venv/
+```
+
+Passwords are read from environment variables and are never stored in source code.
+
+---
+
+## Why I Built This
+
+I had dozens of password-protected PDFs containing the same sensitive information. Unlocking each file and manually redacting the text was repetitive, so I wrote a small utility to automate the entire workflow.
+
+If it saves someone else from doing the same tedious work, even better.
+
+---
+
+## License
+
+MIT License
